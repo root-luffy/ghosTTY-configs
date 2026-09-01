@@ -1,0 +1,7 @@
+[Unit]
+Description=Roll a new Ghostty background image and apply it live
+Documentation=man:ghostty(1)
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/ghostty-wallpaper --reload

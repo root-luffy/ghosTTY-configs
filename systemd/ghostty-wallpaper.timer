@@ -1,0 +1,14 @@
+[Unit]
+Description=Rotate the Ghostty background image on an interval
+
+[Timer]
+# First roll shortly after login, then every OnUnitActiveSec.
+# Change the interval with:
+#   systemctl --user edit ghostty-wallpaper.timer
+# or by editing this file, then: systemctl --user daemon-reload
+OnStartupSec=1min
+OnUnitActiveSec=5min
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

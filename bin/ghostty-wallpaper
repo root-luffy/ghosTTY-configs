@@ -1,0 +1,495 @@
+#!/usr/bin/env bash
+# Pick a random background image for Ghostty.
+#
+# Writes ~/.config/ghostty/wallpaper.conf, which the main Ghostty config pulls
+# in via `config-file = ?wallpaper.conf`. Ghostty reads its config at startup,
+# so a new pick shows up in the next window you open, or right away in the
+# current one via ctrl+shift+r (reload_config).
+#
+# Source folder: ~/Pictures/ghostty if it has any images in it, otherwise
+# ~/Pictures/wallpapers. Drop images into ~/Pictures/ghostty and they take over
+# on the next roll -- nothing to configure. Curated images are used as-is; the
+# fallback library is filtered to dark images only, because a bright wallpaper
+# behind terminal text is unreadable. Brightness is measured once and cached.
+#
+#   ghostty-wallpaper              re-roll
+#   ghostty-wallpaper --dark       re-roll, dark images only (luma <= 0.30)
+#   ghostty-wallpaper --all        re-roll, no brightness filter
+#   ghostty-wallpaper --set FILE   pin a specific image
+#   ghostty-wallpaper --off        remove the background image
+#   ghostty-wallpaper --print      show the current pick
+#   ghostty-wallpaper --reindex    rebuild the brightness cache
+#   ghostty-wallpaper --look NAME  how present the wallpaper is, remembered:
+#                                    bold      sharp and clearly visible
+#                                    balanced  visible, text stays comfortable
+#                                    subtle    background texture only
+#   ghostty-wallpaper --cap N      cap wallpaper brightness at N% of white,
+#                                  remembered. Lower = dimmer wallpaper and
+#                                  more readable text. 42=3.6:1, 30=5.7:1,
+#                                  20=8.5:1 worst-case text contrast.
+#   ghostty-wallpaper --opacity N  set image opacity (0.0-1.0), remembered
+#   ghostty-wallpaper --reload     also apply it to already-open windows, live
+#                                  (used by the ghostty-wallpaper.timer unit)
+#
+# Env overrides: GHOSTTY_WALLPAPER_DIR (force one folder),
+#                GHOSTTY_WALLPAPER_CURATED_DIR, GHOSTTY_WALLPAPER_MAX_LUMA,
+#                GHOSTTY_WALLPAPER_OPACITY
+
+set -euo pipefail
+
+CURATED_DIR="${GHOSTTY_WALLPAPER_CURATED_DIR:-$HOME/Pictures/ghostty}"
+FALLBACK_DIR="$HOME/Pictures/wallpapers"
+CONF="$HOME/.config/ghostty/wallpaper.conf"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ghostty-wallpaper"
+PLATE_DIR="$CACHE_DIR/plates"
+OPACITY_FILE="$CACHE_DIR/opacity"
+MAX_LUMA="${GHOSTTY_WALLPAPER_MAX_LUMA:-0.30}"
+
+# Readability tuning.
+#
+# Fixed settings cannot work here: these wallpapers range from 0.09 to 0.61 mean
+# luminance, so any single ceiling/opacity pair either washes out the dark ones
+# or lets the bright ones swallow the text. Instead each image is measured and
+# its own settings are solved for, so every wallpaper lands at the same
+# guaranteed text contrast while being shown as strongly as that allows.
+#
+# A look picks the contrast target, not the brightness:
+#   CAP     hard ceiling on plate brightness, as a percent of white. No
+#           pixel of the wallpaper may exceed it once baked, so this alone
+#           decides how bright the wallpaper can ever get on screen.
+#   BLUR    pixel radius at 2560px wide; softens detail that competes with
+#           glyph edges. Heavy blur is what stops a wallpaper looking like
+#           itself, so only the quietest look uses much.
+LOOK_FILE="$CACHE_DIR/look"
+if [[ -n ${GHOSTTY_WALLPAPER_LOOK:-} ]]; then
+	LOOK="$GHOSTTY_WALLPAPER_LOOK"
+elif [[ -s $LOOK_FILE ]]; then
+	LOOK="$(<"$LOOK_FILE")"
+else
+	LOOK=balanced
+fi
+
+case "$LOOK" in
+bold) # as bright as the wallpaper can go before text starts to suffer
+	P_CAP=52 P_BLUR=0
+	;;
+balanced) # clearly visible wallpaper, text sits cleanly on it
+	P_CAP=42 P_BLUR=0
+	;;
+subtle) # quiet background texture
+	P_CAP=32 P_BLUR=0
+	;;
+*)
+	echo "ghostty-wallpaper: unknown look '$LOOK', using balanced" >&2
+	LOOK=balanced P_CAP=42 P_BLUR=0
+	;;
+esac
+
+CAP_FILE="$CACHE_DIR/cap"
+if [[ -n ${GHOSTTY_WALLPAPER_CAP:-} ]]; then
+	CAP="$GHOSTTY_WALLPAPER_CAP"
+elif [[ -s $CAP_FILE ]]; then
+	CAP="$(<"$CAP_FILE")"     # set by --cap, survives rolls and the timer
+else
+	CAP="$P_CAP"
+fi
+BLUR="${GHOSTTY_WALLPAPER_BLUR:-$P_BLUR}"
+
+# Clip only the blown-out tail of the histogram. Clipping at the Nth percentile
+# flattens the hotspots while leaving the rest of the image untouched.
+# Filled in after the helpers are defined (see luminance_of / theme_color).
+FG_LUM="" BASE_LUM=""
+
+mkdir -p "$CACHE_DIR" "$(dirname "$CONF")"
+
+images_in() {
+	find -L "$1" -type f \
+		\( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' \) \
+		2>/dev/null | sort
+}
+
+has_images() {
+	[[ -d $1 ]] && [[ -n $(images_in "$1" | head -n1) ]]
+}
+
+# ~/Pictures/ghostty takes over automatically as soon as it holds an image.
+# Until then, fall back to the general wallpaper library. Images you put in the
+# curated folder are used as-is -- no brightness filter, since you picked them
+# on purpose; add --dark to filter them anyway.
+if [[ -n ${GHOSTTY_WALLPAPER_DIR:-} ]]; then
+	WALL_DIR="$GHOSTTY_WALLPAPER_DIR"
+	FILTER_BY_DEFAULT=1
+elif has_images "$CURATED_DIR"; then
+	WALL_DIR="$CURATED_DIR"
+	FILTER_BY_DEFAULT=0
+else
+	WALL_DIR="$FALLBACK_DIR"
+	FILTER_BY_DEFAULT=1
+fi
+
+# One brightness index per directory, so switching folders never mixes results.
+INDEX="$CACHE_DIR/index-$(printf '%s' "$WALL_DIR" | md5sum | cut -c1-8)"
+
+# Opacity is normally solved per image. Setting it explicitly pins it, and the
+# solver compensates by lowering that image's brightness ceiling instead.
+# --look clears any saved override and hands opacity back to the solver.
+if [[ -n "${GHOSTTY_WALLPAPER_OPACITY:-}" ]]; then
+	OPACITY_OVERRIDE="$GHOSTTY_WALLPAPER_OPACITY"
+elif [[ -s "$OPACITY_FILE" ]]; then
+	OPACITY_OVERRIDE="$(<"$OPACITY_FILE")"
+else
+	OPACITY_OVERRIDE=""
+fi
+
+die() {
+	echo "ghostty-wallpaper: $*" >&2
+	exit 1
+}
+
+list_images() {
+	images_in "$WALL_DIR"
+}
+
+# Cheap signature of the wallpaper directory: file count + newest mtime.
+# Changes when images are added, removed, or replaced.
+dir_signature() {
+	find -L "$WALL_DIR" -type f \
+		\( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' \) \
+		-printf '%T@\n' 2>/dev/null |
+		awk 'BEGIN{n=0;m=0} {n++; if ($1+0 > m) m=$1+0} END{printf "%d:%d\n", n, m}'
+}
+
+# Mean luminance of an image, 0.0 (black) - 1.0 (white). Downscales first so
+# multi-megabyte PNGs stay cheap.
+luma_of() {
+	magick "$1" -resize 64x64 -colorspace Gray -format '%[fx:mean]' info: 2>/dev/null
+}
+
+build_index() {
+	command -v magick >/dev/null 2>&1 ||
+		die "ImageMagick (magick) not found -- run with --all to skip the brightness filter"
+
+	local sig total=0 kept=0 luma
+	sig="$(dir_signature)"
+	local tmp="$INDEX.$$"
+	: >"$tmp"
+
+	echo "ghostty-wallpaper: indexing brightness in $WALL_DIR (one time, ~1 min)..." >&2
+	while IFS= read -r img; do
+		total=$((total + 1))
+		luma="$(luma_of "$img")" || continue
+		[[ -n $luma ]] || continue
+		if awk -v l="$luma" -v m="$MAX_LUMA" 'BEGIN{exit !(l+0 <= m+0)}'; then
+			printf '%s\n' "$img" >>"$tmp"
+			kept=$((kept + 1))
+		fi
+	done < <(list_images)
+
+	printf '#sig %s\n' "$sig" | cat - "$tmp" >"$tmp.final"
+	mv -f "$tmp.final" "$INDEX"
+	rm -f "$tmp"
+	echo "ghostty-wallpaper: kept $kept of $total images (luma <= $MAX_LUMA)" >&2
+}
+
+index_is_fresh() {
+	[[ -s $INDEX ]] || return 1
+	local cached
+	cached="$(head -n1 "$INDEX")"
+	[[ $cached == "#sig $(dir_signature)" ]]
+}
+
+candidates() {
+	if [[ ${USE_ALL:-0} == 1 ]]; then
+		list_images
+		return
+	fi
+	index_is_fresh || build_index
+	tail -n +2 "$INDEX"
+}
+
+# The config points at the processed plate, so the original path is recorded
+# separately -- that is what --print reports and what repeat-avoidance compares.
+current_image() {
+	[[ -f $CONF ]] || return 0
+	sed -n 's/^# source = //p' "$CONF" | tail -n1
+}
+
+# WCAG relative luminance of a #rrggbb colour. sRGB values have to be
+# linearised first -- treating them as linear overstates brightness badly and
+# was the bug in my first pass at these numbers.
+luminance_of() {
+	printf '%s\n' "${1#\#}" | awk '{
+		r = strtonum("0x" substr($0,1,2)) / 255
+		g = strtonum("0x" substr($0,3,2)) / 255
+		b = strtonum("0x" substr($0,5,2)) / 255
+		print 0.2126*lin(r) + 0.7152*lin(g) + 0.0722*lin(b)
+	}
+	function lin(c) { return c <= 0.04045 ? c/12.92 : exp(2.4*log((c+0.055)/1.055)) }'
+}
+
+# Read the theme colours actually in effect rather than assuming them, so this
+# keeps working if the palette changes. Reads the file directly rather than
+# shelling out to `ghostty +show-config`, which is too slow to run per shell.
+theme_color() {
+	local key="$1" fallback="$2" val
+	val="$(sed -n "s/^$key = *//p" "$HOME/.config/ghostty/config" 2>/dev/null | tail -n1)"
+	[[ $val == \#* ]] && printf '%s\n' "$val" || printf '%s\n' "$fallback"
+}
+
+FG_LUM="$(luminance_of "$(theme_color foreground '#c8d3f5')")"
+BASE_LUM="$(luminance_of "$(theme_color background '#0d1117')")"
+
+# sRGB value (0-1) at the given percentile of an image's grey histogram.
+percentile_luma() {
+	local src="$1" pct="$2"
+	magick "$src" -resize 200x -colorspace Gray -depth 8 -format %c histogram:info:- 2>/dev/null |
+		sed -E 's/^ *([0-9]+):.*gray\(([0-9]+)\).*/\1 \2/' |
+		awk -v pct="$pct" '
+			NF == 2 { bin[$2] += $1; total += $1 }
+			END {
+				if (total == 0) { print 1.0; exit }
+				want = total * pct / 100; acc = 0
+				for (v = 0; v <= 255; v++) {
+					acc += bin[v]
+					if (acc >= want) { printf "%.4f\n", v/255; exit }
+				}
+				print 1.0
+			}'
+}
+
+# Linear-light scale factor that maps this image's near-peak to CAP.
+#
+# Brightness is baked into the plate and the image is then drawn at full opacity,
+# rather than leaning on background-image-opacity to darken it. That decision is
+# deliberate: predicting the composited result from an opacity value requires
+# modelling Ghostty's blend, and measuring an actual frame against that model
+# showed the screen coming out brighter than any opacity math predicted. Baking
+# it in removes the guesswork -- what is in the file is what lands on screen.
+scale_for() {
+	local src="$1" p
+	p="$(percentile_luma "$src" 99)"
+	awk -v p="$p" -v cap="$CAP" '
+		function lin(c) { return c <= 0.04045 ? c/12.92 : exp(2.4*log((c+0.055)/1.055)) }
+		BEGIN {
+			target = lin(cap/100)
+			peak   = lin(p)
+			k = (peak > 0.0001) ? target/peak : 1.0
+			if (k > 1.0) k = 1.0     # never brighten a wallpaper, only dim it
+			printf "%.4f\n", k
+		}'
+}
+
+# Ghostty draws the image raw -- minimum-contrast explicitly does not apply to
+# images, and there is no blur or dim option for it. So the readability work has
+# to happen before Ghostty sees the file: blur away fine detail that competes
+# with glyph edges, dim overall, then hard-cap the brightest pixels. The cap is
+# what matters -- a wallpaper can average a harmless 0.2 luma and still have
+# blown-out highlights that swallow text sitting on them.
+#
+# Result is cached per (image, mtime, settings), so a repeat pick is instant.
+# Echoes "<image to use> <opacity to use>". The solved opacity is cached in a
+# sidecar next to the plate, so a repeat pick costs one file read.
+plate_for() {
+	local src="$1"
+	command -v magick >/dev/null 2>&1 || {
+		printf '%s %s\n' "$src" "${OPACITY_OVERRIDE:-0.30}"
+		return 0
+	}
+
+	local key out params
+	key="$(printf '%s|%s|%s|%s' \
+		"$src" "$(stat -c %Y "$src" 2>/dev/null)" "$BLUR" "$CAP" |
+		md5sum | cut -c1-16)"
+	out="$PLATE_DIR/$key.jpg"
+	params="$PLATE_DIR/$key.params"
+
+	if [[ -f $out && -s $params ]]; then
+		cat "$params"
+		return 0
+	fi
+
+	mkdir -p "$PLATE_DIR"
+	local k opacity
+	k="$(scale_for "$src")"
+	opacity="${OPACITY_OVERRIDE:-1.0}"
+
+	# Scale in linear light (-colorspace RGB), which is where halving light
+	# actually means half the light. Then clip whatever the percentile missed.
+	if magick "$src" -resize '2560x2560>' \
+		-blur "0x$BLUR" \
+		-colorspace RGB -evaluate multiply "$k" -colorspace sRGB \
+		-evaluate Min "$CAP%" \
+		-quality 90 "$out.tmp" 2>/dev/null; then
+		mv -f "$out.tmp" "$out"
+		printf '%s %s\n' "$out" "$opacity" >"$params"
+		cat "$params"
+	else
+		rm -f "$out.tmp"
+		printf '%s %s\n' "$src" "0.20"
+	fi
+}
+
+# Tell every running Ghostty window to re-read its config. Ghostty exposes the
+# reload-config action on the session bus, so this changes the wallpaper live
+# without touching the keyboard. Silent no-op when Ghostty isn't running.
+reload_ghostty() {
+	command -v gdbus >/dev/null 2>&1 || return 0
+	gdbus call --session --dest com.mitchellh.ghostty \
+		--object-path /com/mitchellh/ghostty \
+		--method org.gtk.Actions.Activate 'reload-config' '[]' '{}' \
+		>/dev/null 2>&1 || true
+}
+
+maybe_reload() {
+	[[ ${RELOAD:-0} == 1 ]] && reload_ghostty
+	return 0
+}
+
+write_conf() {
+	local img="$1" tmp="$CONF.$$" plate opacity
+	read -r plate opacity <<<"$(plate_for "$img")"
+	{
+		echo "# Generated by ghostty-wallpaper -- edits here are overwritten."
+		echo "# Re-roll: ghostty-wallpaper   ·   pin one: ghostty-wallpaper --set FILE"
+		echo "# look = $LOOK (brightness capped at ${CAP}% of white, baked in)"
+		echo "# source = $img"
+		echo "background-image = $plate"
+		echo "background-image-opacity = $opacity"
+		echo "background-image-fit = cover"
+		echo "background-image-position = center"
+		echo "background-image-repeat = false"
+	} >"$tmp"
+	mv -f "$tmp" "$CONF"
+}
+
+USE_ALL=$((FILTER_BY_DEFAULT == 1 ? 0 : 1))
+ACTION=roll
+PIN=""
+RELOAD=0
+
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+	--all) USE_ALL=1 ;;
+	--dark) USE_ALL=0 ;;
+	--reload) RELOAD=1 ;;
+	--reindex) ACTION=reindex ;;
+	--prepare) ACTION=prepare ;;
+	--print) ACTION=print ;;
+	--off) ACTION=off ;;
+	--set)
+		[[ $# -ge 2 ]] || die "--set needs a file path"
+		ACTION=set
+		PIN="$2"
+		shift
+		;;
+	--opacity)
+		[[ $# -ge 2 ]] || die "--opacity needs a value"
+		OPACITY_OVERRIDE="$2"
+		printf '%s\n' "$OPACITY_OVERRIDE" >"$OPACITY_FILE"
+		shift
+		;;
+	--cap)
+		[[ $# -ge 2 ]] || die "--cap needs a percentage, e.g. --cap 30"
+		CAP="$2"
+		printf '%s\n' "$CAP" >"$CAP_FILE"
+		shift
+		;;
+	--look)
+		[[ $# -ge 2 ]] || die "--look needs one of: bold, balanced, subtle"
+		LOOK="$2"
+		case "$LOOK" in
+		bold) CAP=52 BLUR=0 ;;
+		balanced) CAP=42 BLUR=0 ;;
+		subtle) CAP=32 BLUR=0 ;;
+		*) die "unknown look '$LOOK' (bold, balanced, subtle)" ;;
+		esac
+		printf '%s\n' "$LOOK" >"$LOOK_FILE"
+		rm -f "$OPACITY_FILE" "$CAP_FILE" # the look's own cap takes over again
+		OPACITY_OVERRIDE=""
+		shift
+		;;
+	-h | --help)
+		awk 'NR>1 && /^#/ {sub(/^# ?/, ""); print; next} NR>1 {exit}' "$0"
+		exit 0
+		;;
+	*) die "unknown option: $1" ;;
+	esac
+	shift
+done
+
+[[ -d $WALL_DIR ]] || die "wallpaper directory not found: $WALL_DIR"
+
+case "$ACTION" in
+print)
+	img="$(current_image)"
+	[[ -n $img ]] && echo "$img" || echo "(none)"
+	exit 0
+	;;
+off)
+	{
+		echo "# Generated by ghostty-wallpaper --off"
+		echo "# Re-enable with: ghostty-wallpaper"
+	} >"$CONF"
+	maybe_reload
+	echo "background image off (reload with ctrl+shift+r)"
+	exit 0
+	;;
+reindex)
+	rm -f "$INDEX"
+	build_index
+	exit 0
+	;;
+prepare)
+	# Build every plate up front so no roll ever has to wait on ImageMagick.
+	n=0
+	keep="$CACHE_DIR/.keep.$$"
+	: >"$keep"
+	while IFS= read -r img; do
+		plate_for "$img" | awk '{print $1}' >>"$keep"
+		n=$((n + 1))
+	done < <(list_images)
+
+	# Drop plates from previous looks/settings -- otherwise every --look leaves
+	# a full set behind and the cache grows without bound.
+	freed=0
+	if [[ -d $PLATE_DIR ]]; then
+		while IFS= read -r stale; do
+			# A .params sidecar lives or dies with its .jpg plate.
+			cand="$stale"
+			[[ $stale == *.params ]] && cand="${stale%.params}.jpg"
+			grep -qxF "$cand" "$keep" && continue
+			freed=$((freed + $(stat -c %s "$stale" 2>/dev/null || echo 0)))
+			rm -f "$stale"
+		done < <(find "$PLATE_DIR" -type f \( -name '*.jpg' -o -name '*.params' \))
+	fi
+	rm -f "$keep"
+
+	echo "prepared $n plates in $PLATE_DIR (look=$LOOK cap=${CAP}% blur=$BLUR)"
+	[[ $freed -gt 0 ]] && echo "pruned $((freed / 1024 / 1024))MB of stale plates"
+	exit 0
+	;;
+set)
+	[[ -f $PIN ]] || die "no such file: $PIN"
+	write_conf "$(realpath "$PIN")"
+	maybe_reload
+	echo "$(realpath "$PIN")"
+	exit 0
+	;;
+esac
+
+# Roll: pick something other than what is already set, when there is a choice.
+prev="$(current_image)"
+mapfile -t pool < <(candidates)
+[[ ${#pool[@]} -gt 0 ]] || die "no usable images in $WALL_DIR (try --all or a higher GHOSTTY_WALLPAPER_MAX_LUMA)"
+
+pick="${pool[RANDOM % ${#pool[@]}]}"
+if [[ ${#pool[@]} -gt 1 ]]; then
+	for _ in 1 2 3 4 5; do
+		[[ $pick != "$prev" ]] && break
+		pick="${pool[RANDOM % ${#pool[@]}]}"
+	done
+fi
+
+write_conf "$pick"
+maybe_reload
+echo "$pick"

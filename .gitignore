@@ -1,0 +1,5 @@
+# install.sh backups
+*.bak-*
+
+*~
+.DS_Store
