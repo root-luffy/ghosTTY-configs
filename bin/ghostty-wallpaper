@@ -34,8 +34,40 @@
 # Env overrides: GHOSTTY_WALLPAPER_DIR (force one folder),
 #                GHOSTTY_WALLPAPER_CURATED_DIR, GHOSTTY_WALLPAPER_MAX_LUMA,
 #                GHOSTTY_WALLPAPER_OPACITY
+#
+# Runs on Linux and macOS (stock bash 3.2 included -- nothing here needs
+# bash 4). GNU vs BSD userland differences (stat, md5sum, find -printf) are
+# isolated in the helpers below; the rest of the script is plain POSIX.
 
 set -euo pipefail
+
+case "$(uname -s)" in
+Darwin) IS_MACOS=1 ;;
+*) IS_MACOS=0 ;;
+esac
+
+# Absolute path to a file, without requiring GNU coreutils' realpath (not
+# guaranteed present on macOS).
+resolve_path() {
+	if command -v realpath >/dev/null 2>&1; then
+		realpath "$1"
+	else
+		printf '%s/%s\n' "$(cd "$(dirname "$1")" && pwd)" "$(basename "$1")"
+	fi
+}
+
+# Modification time / size, in the one syntax each OS's `stat` accepts.
+mtime_of() { if [[ $IS_MACOS == 1 ]]; then stat -f %m "$1" 2>/dev/null; else stat -c %Y "$1" 2>/dev/null; fi; }
+size_of() { if [[ $IS_MACOS == 1 ]]; then stat -f %z "$1" 2>/dev/null; else stat -c %s "$1" 2>/dev/null; fi; }
+
+# md5 of a string: md5sum (Linux) or md5 -q (macOS, prints the bare hash).
+hash_str() {
+	if command -v md5sum >/dev/null 2>&1; then
+		printf '%s' "$1" | md5sum | awk '{print $1}'
+	else
+		printf '%s' "$1" | md5 -q
+	fi
+}
 
 CURATED_DIR="${GHOSTTY_WALLPAPER_CURATED_DIR:-$HOME/Pictures/ghostty}"
 FALLBACK_DIR="$HOME/Pictures/wallpapers"
@@ -128,7 +160,7 @@ else
 fi
 
 # One brightness index per directory, so switching folders never mixes results.
-INDEX="$CACHE_DIR/index-$(printf '%s' "$WALL_DIR" | md5sum | cut -c1-8)"
+INDEX="$CACHE_DIR/index-$(hash_str "$WALL_DIR" | cut -c1-8)"
 
 # Opacity is normally solved per image. Setting it explicitly pins it, and the
 # solver compensates by lowering that image's brightness ceiling instead.
@@ -151,12 +183,16 @@ list_images() {
 }
 
 # Cheap signature of the wallpaper directory: file count + newest mtime.
-# Changes when images are added, removed, or replaced.
+# Changes when images are added, removed, or replaced. Loops over `stat`
+# instead of GNU find's `-printf`, which macOS's find doesn't have.
 dir_signature() {
-	find -L "$WALL_DIR" -type f \
-		\( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' \) \
-		-printf '%T@\n' 2>/dev/null |
-		awk 'BEGIN{n=0;m=0} {n++; if ($1+0 > m) m=$1+0} END{printf "%d:%d\n", n, m}'
+	local n=0 m=0 t img
+	while IFS= read -r img; do
+		n=$((n + 1))
+		t="$(mtime_of "$img")"
+		[[ -n $t ]] && ((t > m)) && m=$t
+	done < <(images_in "$WALL_DIR")
+	printf '%d:%d\n' "$n" "$m"
 }
 
 # Mean luminance of an image, 0.0 (black) - 1.0 (white). Downscales first so
@@ -216,15 +252,15 @@ current_image() {
 
 # WCAG relative luminance of a #rrggbb colour. sRGB values have to be
 # linearised first -- treating them as linear overstates brightness badly and
-# was the bug in my first pass at these numbers.
+# was the bug in my first pass at these numbers. Hex is parsed in bash
+# (${1#\#} + $((16#..))) rather than awk's strtonum, a gawk-only extension
+# that macOS's stock awk doesn't have.
 luminance_of() {
-	printf '%s\n' "${1#\#}" | awk '{
-		r = strtonum("0x" substr($0,1,2)) / 255
-		g = strtonum("0x" substr($0,3,2)) / 255
-		b = strtonum("0x" substr($0,5,2)) / 255
-		print 0.2126*lin(r) + 0.7152*lin(g) + 0.0722*lin(b)
-	}
-	function lin(c) { return c <= 0.04045 ? c/12.92 : exp(2.4*log((c+0.055)/1.055)) }'
+	local hex="${1#\#}" r g b
+	r=$((16#${hex:0:2})) g=$((16#${hex:2:2})) b=$((16#${hex:4:2}))
+	awk -v r="$r" -v g="$g" -v b="$b" '
+		function lin(c) { return c <= 0.04045 ? c/12.92 : exp(2.4*log((c+0.055)/1.055)) }
+		BEGIN { print 0.2126*lin(r/255) + 0.7152*lin(g/255) + 0.0722*lin(b/255) }'
 }
 
 # Read the theme colours actually in effect rather than assuming them, so this
@@ -297,9 +333,7 @@ plate_for() {
 	}
 
 	local key out params
-	key="$(printf '%s|%s|%s|%s' \
-		"$src" "$(stat -c %Y "$src" 2>/dev/null)" "$BLUR" "$CAP" |
-		md5sum | cut -c1-16)"
+	key="$(hash_str "$src|$(mtime_of "$src")|$BLUR|$CAP" | cut -c1-16)"
 	out="$PLATE_DIR/$key.jpg"
 	params="$PLATE_DIR/$key.params"
 
@@ -329,15 +363,20 @@ plate_for() {
 	fi
 }
 
-# Tell every running Ghostty window to re-read its config. Ghostty exposes the
-# reload-config action on the session bus, so this changes the wallpaper live
-# without touching the keyboard. Silent no-op when Ghostty isn't running.
+# Tell every running Ghostty process to re-read its config. Ghostty (1.2+)
+# reloads on SIGUSR2 -- any other signal crashes it, so this is deliberately
+# narrow. Same mechanism on Linux and macOS, unlike the GTK/D-Bus action this
+# used to shell out to (Linux-only, and Ghostty's macOS build isn't GTK).
+# Silent no-op when Ghostty isn't running.
 reload_ghostty() {
-	command -v gdbus >/dev/null 2>&1 || return 0
-	gdbus call --session --dest com.mitchellh.ghostty \
-		--object-path /com/mitchellh/ghostty \
-		--method org.gtk.Actions.Activate 'reload-config' '[]' '{}' \
-		>/dev/null 2>&1 || true
+	local pids
+	pids="$(pgrep -x ghostty 2>/dev/null || true)"
+	[[ -n $pids ]] || pids="$(pgrep -x Ghostty 2>/dev/null || true)"
+	[[ -n $pids ]] || return 0
+	local pid
+	for pid in $pids; do
+		kill -USR2 "$pid" 2>/dev/null || true
+	done
 }
 
 maybe_reload() {
@@ -458,7 +497,7 @@ prepare)
 			cand="$stale"
 			[[ $stale == *.params ]] && cand="${stale%.params}.jpg"
 			grep -qxF "$cand" "$keep" && continue
-			freed=$((freed + $(stat -c %s "$stale" 2>/dev/null || echo 0)))
+			freed=$((freed + $(size_of "$stale" || echo 0)))
 			rm -f "$stale"
 		done < <(find "$PLATE_DIR" -type f \( -name '*.jpg' -o -name '*.params' \))
 	fi
@@ -470,16 +509,19 @@ prepare)
 	;;
 set)
 	[[ -f $PIN ]] || die "no such file: $PIN"
-	write_conf "$(realpath "$PIN")"
+	write_conf "$(resolve_path "$PIN")"
 	maybe_reload
-	echo "$(realpath "$PIN")"
+	echo "$(resolve_path "$PIN")"
 	exit 0
 	;;
 esac
 
 # Roll: pick something other than what is already set, when there is a choice.
 prev="$(current_image)"
-mapfile -t pool < <(candidates)
+pool=()
+while IFS= read -r img; do
+	pool+=("$img")
+done < <(candidates)
 [[ ${#pool[@]} -gt 0 ]] || die "no usable images in $WALL_DIR (try --all or a higher GHOSTTY_WALLPAPER_MAX_LUMA)"
 
 pick="${pool[RANDOM % ${#pool[@]}]}"

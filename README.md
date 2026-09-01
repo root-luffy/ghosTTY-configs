@@ -16,7 +16,8 @@ shaders/glow.glsl           subtle neon bloom on bright text (off by default)
 shaders/crt.glsl            retro CRT alternative (off by default)
 bin/ghostty-wallpaper       the wallpaper tool
 wallpapers/                 the curated image set, included so this works out of the box
-systemd/*.service, *.timer  rotates the wallpaper every 5 minutes
+systemd/*.service, *.timer  rotates the wallpaper every 5 minutes (Linux)
+launchd/*.plist             rotates the wallpaper every 5 minutes (macOS)
 zsh/wallpaper-hook.zsh      re-rolls on every new shell
 ```
 
@@ -32,7 +33,8 @@ That's the whole setup — it's meant to work immediately on a fresh clone:
 - symlinks `bin/ghostty-wallpaper` into `~/.local/bin`
 - symlinks `wallpapers/` to `~/Pictures/ghostty`, so the rotation has images
   from the first roll — no manual step needed
-- symlinks and enables the systemd timer (rotates every 5 minutes)
+- enables the rotation timer — a systemd user timer on Linux, a launchd agent
+  on macOS (`install.sh` detects which via `uname`)
 - adds a line to `~/.zshrc` that re-rolls on every new shell (skipped if
   already present)
 
@@ -41,9 +43,24 @@ Anything already at one of those paths is backed up first, as
 means editing the live config edits the repo directly, so `git diff` always
 shows what's actually changed.
 
-Needs `imagemagick` for the brightness work; `gdbus` (glib2) for live reload.
-Both are almost certainly already installed. Open a new terminal window after
-installing.
+Needs `imagemagick` for the brightness work (`brew install imagemagick` on
+macOS, or your Linux package manager). Nothing else to install — live reload
+uses `kill -USR2` (a signal Ghostty itself has handled since 1.2), which needs
+only `pgrep`/`kill`, already on both platforms. Open a new terminal window
+after installing.
+
+**Linux and macOS both work**, including macOS's stock `/bin/bash` (nothing
+here needs bash 4). The only platform-specific pieces are the rotation timer
+(systemd vs. launchd, handled above) and two `config` keys — `gtk-single-instance`
+and `gtk-tabs-location` — that Ghostty silently ignores outside its GTK/Linux
+build, so the same `config` file works unmodified on macOS.
+
+On macOS, Ghostty prefers `~/Library/Application Support/com.mitchellh.ghostty/config`
+over `~/.config/ghostty/config` *if* that folder already has files in it — e.g.
+from using the in-app Settings menu before running this installer. On a fresh
+Ghostty install there's nothing there yet, so the symlinked XDG path wins with
+no extra steps; if you've used the GUI settings first, move anything out of
+the Application Support folder before installing.
 
 ## The wallpaper system
 
@@ -100,9 +117,10 @@ Two triggers, both applying without a keypress:
 
 - **every new shell** — the zsh hook re-rolls in about 5ms, so each window you
   open gets a different image
-- **every 5 minutes** — the systemd timer re-rolls *and* pushes it to windows
-  that are already open, via the `reload-config` action Ghostty exposes on the
-  session bus
+- **every 5 minutes** — the rotation timer (systemd on Linux, launchd on
+  macOS) re-rolls *and* pushes it to windows that are already open, by sending
+  Ghostty `SIGUSR2`, which it's reloaded its config on since 1.2 — the same
+  signal on both platforms, no D-Bus or AppleScript involved
 
 ## Commands
 
@@ -132,15 +150,20 @@ Environment overrides: `GHOSTTY_WALLPAPER_DIR`, `GHOSTTY_WALLPAPER_CURATED_DIR`,
 - `background-opacity` is `1.0`. With a background image, window transparency
   stacks the desktop *and* whatever window sits behind Ghostty underneath your
   text. Set it back to `0.92` for the see-through look.
-- Stop the rotation with `systemctl --user disable --now ghostty-wallpaper.timer`.
-  Per-window rolling and manual use are unaffected.
+- Stop the rotation with `systemctl --user disable --now ghostty-wallpaper.timer`
+  (Linux) or `launchctl bootout gui/$(id -u)/com.luffy.ghostty-wallpaper`
+  (macOS). Per-window rolling and manual use are unaffected.
 
 ## Environment
 
-Written against the machine it runs on, not as a portable framework:
+- **Linux**: developed on EndeavourOS (Arch), Wayland, zsh + oh-my-zsh +
+  starship, Ghostty 1.3.x. Package names in this doc assume Arch; substitute
+  your distro's.
+- **macOS**: install.sh's launchd branch and the wallpaper script's BSD-tool
+  handling are written from Ghostty/macOS documentation and Ghostty's own
+  cross-platform SIGUSR2 reload, not verified on real Mac hardware — if
+  something doesn't work, it's likely a `stat`/`find` quirk one macOS version
+  handles differently.
 
-- EndeavourOS (Arch), Wayland
-- zsh + oh-my-zsh + starship
-- Ghostty 1.3.x
-
-It'll mostly work elsewhere, but paths and package names assume the above.
+Both target zsh; other shells only miss the auto-reroll-per-shell hook (the
+rest of `install.sh` doesn't care what shell you run).

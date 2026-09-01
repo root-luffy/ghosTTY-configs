@@ -2,17 +2,41 @@
 # Symlink this Ghostty setup into place. Anything already there is backed up
 # rather than overwritten, and symlinking (not copying) means editing the live
 # config edits the repo, so `git diff` shows what has drifted.
+#
+# Works on Linux (systemd user timer) and macOS (launchd agent) -- the
+# rotation-timer step below is the only part that differs between the two.
 
 set -euo pipefail
 
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 
+case "$(uname -s)" in
+Darwin) IS_MACOS=1 ;;
+*) IS_MACOS=0 ;;
+esac
+
+# Absolute target of a symlink, without requiring GNU coreutils'
+# `readlink -f` (not guaranteed present on macOS).
+resolve() {
+	if command -v realpath >/dev/null 2>&1; then
+		realpath "$1"
+		return
+	fi
+	local p="$1" target
+	while [[ -L $p ]]; do
+		target="$(readlink "$p")"
+		[[ $target == /* ]] || target="$(dirname "$p")/$target"
+		p="$target"
+	done
+	printf '%s/%s\n' "$(cd "$(dirname "$p")" && pwd)" "$(basename "$p")"
+}
+
 link() {
 	local from="$1" to="$2"
 	mkdir -p "$(dirname "$to")"
 	if [[ -e $to || -L $to ]]; then
-		if [[ "$(readlink -f "$to")" == "$(readlink -f "$from")" ]]; then
+		if [[ "$(resolve "$to")" == "$(resolve "$from")" ]]; then
 			echo "  ok      $to"
 			return
 		fi
@@ -35,11 +59,27 @@ echo "wallpaper images:"
 link "$SRC/wallpapers" "$HOME/Pictures/ghostty"
 
 echo "rotation timer:"
-link "$SRC/systemd/ghostty-wallpaper.service" "$HOME/.config/systemd/user/ghostty-wallpaper.service"
-link "$SRC/systemd/ghostty-wallpaper.timer" "$HOME/.config/systemd/user/ghostty-wallpaper.timer"
-systemctl --user daemon-reload
-systemctl --user enable --now ghostty-wallpaper.timer
-echo "  timer enabled"
+if [[ $IS_MACOS == 1 ]]; then
+	# No systemd on macOS -- a launchd agent plays the same role. The plist
+	# is a template (install.sh writes it, rather than symlinking it, since
+	# launchd needs $HOME baked into ProgramArguments as a literal path).
+	LABEL="com.luffy.ghostty-wallpaper"
+	PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+	mkdir -p "$(dirname "$PLIST")"
+	sed "s#__GHOSTTY_WALLPAPER_BIN__#$HOME/.local/bin/ghostty-wallpaper#" \
+		"$SRC/launchd/$LABEL.plist" >"$PLIST"
+	echo "  wrote   $PLIST"
+	launchctl bootout "gui/$(id -u)" "$PLIST" >/dev/null 2>&1 || true
+	launchctl bootstrap "gui/$(id -u)" "$PLIST"
+	launchctl enable "gui/$(id -u)/$LABEL"
+	echo "  agent enabled (rotates every 5 min)"
+else
+	link "$SRC/systemd/ghostty-wallpaper.service" "$HOME/.config/systemd/user/ghostty-wallpaper.service"
+	link "$SRC/systemd/ghostty-wallpaper.timer" "$HOME/.config/systemd/user/ghostty-wallpaper.timer"
+	systemctl --user daemon-reload
+	systemctl --user enable --now ghostty-wallpaper.timer
+	echo "  timer enabled (rotates every 5 min)"
+fi
 
 echo "zsh hook (re-roll on every new shell):"
 ZSHRC="$HOME/.zshrc"
@@ -54,4 +94,8 @@ fi
 echo
 echo "Done. Open a new window (or a new shell) to see it."
 echo "Drop more images in ~/Pictures/ghostty (-> $SRC/wallpapers) to add to the rotation."
-echo "Missing ImageMagick? sudo pacman -S imagemagick"
+if [[ $IS_MACOS == 1 ]]; then
+	echo "Missing ImageMagick? brew install imagemagick"
+else
+	echo "Missing ImageMagick? sudo pacman -S imagemagick"
+fi

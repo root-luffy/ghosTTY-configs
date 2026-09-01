@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS equivalent of ../systemd/ghostty-wallpaper.{service,timer}. Not
+  symlinked like the rest of this repo: launchd needs an absolute path
+  baked into ProgramArguments, so install.sh fills in
+  __GHOSTTY_WALLPAPER_BIN__ and writes the result to
+  ~/Library/LaunchAgents/com.luffy.ghostty-wallpaper.plist.
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.luffy.ghostty-wallpaper</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>__GHOSTTY_WALLPAPER_BIN__</string>
+		<string>--reload</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StartInterval</key>
+	<integer>300</integer>
+</dict>
+</plist>
