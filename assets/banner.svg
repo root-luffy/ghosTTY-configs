@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 380" width="1200" height="380" role="img" aria-label="ghosTTY-configs: a Ghostty setup with a rotating wallpaper that never fights your text">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d1117"/>
+      <stop offset="1" stop-color="#1b1638"/>
+    </linearGradient>
+    <linearGradient id="word" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7dcfff"/>
+      <stop offset="0.5" stop-color="#bb9af7"/>
+      <stop offset="1" stop-color="#ff7eb6"/>
+    </linearGradient>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b2a78"/>
+      <stop offset="0.55" stop-color="#b44b8f"/>
+      <stop offset="1" stop-color="#ff9e6b"/>
+    </linearGradient>
+    <radialGradient id="moonGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffe28a" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#ffe28a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="halo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#bb9af7" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#bb9af7" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="screen"><rect x="0" y="36" width="500" height="254" rx="0"/></clipPath>
+    <clipPath id="win"><rect x="0" y="0" width="500" height="290" rx="14"/></clipPath>
+  </defs>
+
+  <rect width="1200" height="380" rx="24" fill="url(#bg)"/>
+  <circle cx="880" cy="190" r="300" fill="url(#halo)"/>
+  <g fill="#ffffff" opacity="0.5">
+    <circle cx="560" cy="48" r="1.4"/><circle cx="610" cy="330" r="1.2"/><circle cx="1160" cy="40" r="1.6"/>
+    <circle cx="470" cy="350" r="1.1"/><circle cx="1170" cy="344" r="1.3"/><circle cx="600" cy="120" r="1"/>
+  </g>
+
+  <!-- Ghost mark (original) -->
+  <g transform="translate(76 58)">
+    <path d="M0 58 C0 22 22 0 50 0 C78 0 100 22 100 58 L100 112 L86 100 L72 112 L58 100 L50 108 L42 100 L28 112 L14 100 L0 112 Z" fill="#c8d3f5"/>
+    <ellipse cx="34" cy="52" rx="8" ry="11" fill="#0d1117"/>
+    <ellipse cx="66" cy="52" rx="8" ry="11" fill="#0d1117"/>
+    <rect x="44" y="72" width="12" height="4" rx="2" fill="#ff7eff"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="200" y="118" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="62" font-weight="800" fill="url(#word)" letter-spacing="-1.5">ghosTTY</text>
+  <text x="202" y="160" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="30" fill="#8b93b8">-configs</text>
+
+  <text x="78" y="222" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="25" font-weight="600" fill="#e6ebff">A real wallpaper behind your terminal.</text>
+  <text x="78" y="256" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="25" fill="#a9b1d6">It rotates on its own and never fights the text.</text>
+
+  <!-- Neon Tokyo palette strip -->
+  <g transform="translate(78 286)">
+    <rect x="0"   width="26" height="26" rx="6" fill="#15161e" stroke="#414868" stroke-width="1.5"/>
+    <rect x="30"  width="26" height="26" rx="6" fill="#ff5d8f"/>
+    <rect x="60"  width="26" height="26" rx="6" fill="#9ece6a"/>
+    <rect x="90"  width="26" height="26" rx="6" fill="#ffd866"/>
+    <rect x="120" width="26" height="26" rx="6" fill="#7aa2f7"/>
+    <rect x="150" width="26" height="26" rx="6" fill="#bb9af7"/>
+    <rect x="180" width="26" height="26" rx="6" fill="#7dcfff"/>
+    <rect x="210" width="26" height="26" rx="6" fill="#c8d3f5"/>
+    <rect x="240" width="26" height="26" rx="6" fill="#414868"/>
+    <rect x="270" width="26" height="26" rx="6" fill="#ff7eb6"/>
+    <rect x="300" width="26" height="26" rx="6" fill="#b9f27c"/>
+    <rect x="330" width="26" height="26" rx="6" fill="#ffe28a"/>
+    <rect x="360" width="26" height="26" rx="6" fill="#9bb8ff"/>
+    <rect x="390" width="26" height="26" rx="6" fill="#d3aaff"/>
+    <rect x="420" width="26" height="26" rx="6" fill="#a9e9ff"/>
+    <rect x="450" width="26" height="26" rx="6" fill="#ffffff"/>
+  </g>
+  <text x="78" y="340" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="15" fill="#6f7aa6">Neon Tokyo palette  ·  Linux + macOS  ·  Ghostty 1.2+</text>
+
+  <!-- Terminal window -->
+  <g transform="translate(640 46)">
+    <rect x="-2" y="-2" width="504" height="294" rx="16" fill="#414868" opacity="0.6"/>
+    <g clip-path="url(#win)">
+      <rect width="500" height="290" fill="#0d1117"/>
+      <!-- wallpaper art: sunset city (original) -->
+      <g clip-path="url(#screen)">
+        <rect x="0" y="36" width="500" height="254" fill="url(#sky)"/>
+        <circle cx="380" cy="120" r="70" fill="url(#moonGlow)"/>
+        <circle cx="380" cy="120" r="30" fill="#ffe28a"/>
+        <path d="M0 290 L0 214 L30 214 L30 190 L62 190 L62 222 L90 222 L90 170 L128 170 L128 206 L150 206 L150 184 L186 184 L186 230 L214 230 L214 160 L246 160 L246 200 L276 200 L276 216 L310 216 L310 176 L344 176 L344 208 L372 208 L372 194 L408 194 L408 226 L440 226 L440 180 L474 180 L474 212 L500 212 L500 290 Z" fill="#1a1030"/>
+        <path d="M0 290 L0 248 L44 248 L44 236 L96 236 L96 256 L160 256 L160 240 L220 240 L220 258 L300 258 L300 242 L360 242 L360 252 L430 252 L430 238 L500 238 L500 290 Z" fill="#0f0a1f"/>
+        <!-- the "plate": brightness baked down to the cap -->
+        <rect x="0" y="36" width="500" height="254" fill="#0d1117" opacity="0.5"/>
+      </g>
+      <!-- title bar -->
+      <rect width="500" height="36" fill="#15161e"/>
+      <circle cx="22" cy="18" r="6" fill="#ff5d8f"/>
+      <circle cx="42" cy="18" r="6" fill="#ffd866"/>
+      <circle cx="62" cy="18" r="6" fill="#9ece6a"/>
+      <text x="250" y="23" text-anchor="middle" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="14" fill="#a9b1d6">GhosTTY</text>
+
+      <!-- terminal text -->
+      <g font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="16">
+        <text x="22" y="76"><tspan fill="#bb9af7">~</tspan><tspan fill="#ff7eb6"> ❯ </tspan><tspan fill="#c8d3f5">ghostty-wallpaper --look subtle --reload</tspan></text>
+        <text x="22" y="102" fill="#7dcfff">~/Pictures/ghostty/Lofi_Cat.png</text>
+        <text x="22" y="140"><tspan fill="#bb9af7">~</tspan><tspan fill="#ff7eb6"> ❯ </tspan><tspan fill="#c8d3f5">ghostty-wallpaper --print</tspan></text>
+        <text x="22" y="166" fill="#7dcfff">~/Pictures/ghostty/Lofi_Cat.png</text>
+        <text x="22" y="204"><tspan fill="#bb9af7">~</tspan><tspan fill="#ff7eb6"> ❯ </tspan></text>
+      </g>
+      <rect x="62" y="189" width="3" height="20" fill="#ff7eff"/>
+    </g>
+  </g>
+</svg>

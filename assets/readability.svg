@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" width="1200" height="620" role="img" aria-label="Brightness cap versus worst-case text contrast: lower caps give dimmer wallpapers and more readable text">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0d1117"/><stop offset="1" stop-color="#171430"/></linearGradient><linearGradient id="bar" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff5d8f"/><stop offset="0.45" stop-color="#bb9af7"/><stop offset="1" stop-color="#7dcfff"/></linearGradient></defs>
+<rect width="1200" height="620" rx="20" fill="url(#bg)"/>
+<text x="48" y="62" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#e6ebff">Cap the brightness, and the contrast is guaranteed</text>
+<text x="48" y="96" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="18" fill="#a9b1d6">No pixel of the baked plate may exceed the cap, so the worst case for text (#c8d3f5) is known before Ghostty draws a frame.</text>
+<text x="48" y="134" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#6f7aa6" letter-spacing="1.5">--cap</text>
+<text x="150" y="134" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#6f7aa6" letter-spacing="1.5">BRIGHTEST PIXEL</text>
+<text x="420" y="134" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#6f7aa6" letter-spacing="1.5">WORST-CASE TEXT CONTRAST</text>
+<line x1="699.0" y1="146" x2="699.0" y2="550" stroke="#9ece6a" stroke-width="2" stroke-dasharray="5 5"/>
+<text x="699.0" y="574" text-anchor="middle" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="14" fill="#9ece6a">4.5:1 (WCAG AA body text)</text>
+<text x="48" y="182" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="20" font-weight="700" fill="#e6ebff">52%</text>
+<rect x="150" y="158" width="200" height="34" rx="7" fill="#858585"/>
+<text x="164" y="181" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="17" fill="#c8d3f5">~ ❯ ls -la</text>
+<rect x="420" y="163" width="154.3" height="24" rx="12" fill="url(#bar)"/>
+<text x="588.3" y="181" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="18" font-weight="700" fill="#e6ebff" stroke="#121424" stroke-width="8" paint-order="stroke" stroke-linejoin="round">2.5:1</text>
+<text x="664.3" y="181" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="16" fill="#a9b1d6">--look bold</text>
+<rect x="32" y="202" width="1136" height="46" rx="10" fill="#bb9af7" opacity="0.10"/>
+<text x="48" y="232" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="20" font-weight="700" fill="#e6ebff">42%</text>
+<rect x="150" y="208" width="200" height="34" rx="7" fill="#6b6b6b"/>
+<text x="164" y="231" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="17" fill="#c8d3f5">~ ❯ ls -la</text>
+<rect x="420" y="213" width="221.3" height="24" rx="12" fill="url(#bar)"/>
+<text x="655.3" y="231" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="18" font-weight="700" fill="#e6ebff" stroke="#121424" stroke-width="8" paint-order="stroke" stroke-linejoin="round">3.6:1</text>
+<text x="731.3" y="231" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="16" fill="#ff7eb6">--look balanced (default)</text>
+<text x="48" y="282" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="20" font-weight="700" fill="#e6ebff">35%</text>
+<rect x="150" y="258" width="200" height="34" rx="7" fill="#595959"/>
+<text x="164" y="281" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="17" fill="#c8d3f5">~ ❯ ls -la</text>
+<rect x="420" y="263" width="290.2" height="24" rx="12" fill="url(#bar)"/>
+<text x="724.2" y="281" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="18" font-weight="700" fill="#e6ebff" stroke="#121424" stroke-width="8" paint-order="stroke" stroke-linejoin="round">4.7:1</text>
+<text x="48" y="332" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="20" font-weight="700" fill="#e6ebff">32%</text>
+<rect x="150" y="308" width="200" height="34" rx="7" fill="#525252"/>
+<text x="164" y="331" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="17" fill="#c8d3f5">~ ❯ ls -la</text>
+<rect x="420" y="313" width="327.1" height="24" rx="12" fill="url(#bar)"/>
+<text x="761.1" y="331" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="18" font-weight="700" fill="#e6ebff" stroke="#121424" stroke-width="8" paint-order="stroke" stroke-linejoin="round">5.3:1</text>
+<text x="837.1" y="331" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="16" fill="#a9b1d6">--look subtle</text>
+<text x="48" y="382" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="20" font-weight="700" fill="#e6ebff">30%</text>
+<rect x="150" y="358" width="200" height="34" rx="7" fill="#4c4c4c"/>
+<text x="164" y="381" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="17" fill="#c8d3f5">~ ❯ ls -la</text>
+<rect x="420" y="363" width="354.4" height="24" rx="12" fill="url(#bar)"/>
+<text x="788.4" y="381" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="18" font-weight="700" fill="#e6ebff" stroke="#121424" stroke-width="8" paint-order="stroke" stroke-linejoin="round">5.7:1</text>
+<text x="48" y="432" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="20" font-weight="700" fill="#e6ebff">25%</text>
+<rect x="150" y="408" width="200" height="34" rx="7" fill="#404040"/>
+<text x="164" y="431" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="17" fill="#c8d3f5">~ ❯ ls -la</text>
+<rect x="420" y="413" width="432.9" height="24" rx="12" fill="url(#bar)"/>
+<text x="866.9" y="431" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="18" font-weight="700" fill="#e6ebff" stroke="#121424" stroke-width="8" paint-order="stroke" stroke-linejoin="round">7.0:1</text>
+<text x="48" y="482" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="20" font-weight="700" fill="#e6ebff">20%</text>
+<rect x="150" y="458" width="200" height="34" rx="7" fill="#333333"/>
+<text x="164" y="481" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="17" fill="#c8d3f5">~ ❯ ls -la</text>
+<rect x="420" y="463" width="525.5" height="24" rx="12" fill="url(#bar)"/>
+<text x="959.5" y="481" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="18" font-weight="700" fill="#e6ebff" stroke="#121424" stroke-width="8" paint-order="stroke" stroke-linejoin="round">8.5:1</text>
+<text x="48" y="532" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="20" font-weight="700" fill="#e6ebff">15%</text>
+<rect x="150" y="508" width="200" height="34" rx="7" fill="#262626"/>
+<text x="164" y="531" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="17" fill="#c8d3f5">~ ❯ ls -la</text>
+<rect x="420" y="513" width="627.4" height="24" rx="12" fill="url(#bar)"/>
+<text x="1061.4" y="531" font-family="Cascadia Code, Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="18" font-weight="700" fill="#e6ebff" stroke="#121424" stroke-width="8" paint-order="stroke" stroke-linejoin="round">10.1:1</text>
+<text x="48" y="598" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="14" fill="#6f7aa6">Ratios use WCAG relative luminance: the Neon Tokyo foreground #c8d3f5 against a pixel sitting exactly at the cap.</text>
+</svg>

@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" width="1200" height="560" role="img" aria-label="How a roll works: a trigger runs ghostty-wallpaper, which picks an image, measures it, bakes a brightness-capped plate, writes wallpaper.conf and signals Ghostty to reload">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d1117"/>
+      <stop offset="1" stop-color="#171430"/>
+    </linearGradient>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#8b93b8"/>
+    </marker>
+    <linearGradient id="hist" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7aa2f7"/>
+      <stop offset="1" stop-color="#ff7eb6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="560" rx="20" fill="url(#bg)"/>
+
+  <text x="48" y="62" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#e6ebff">What happens on every roll</text>
+  <text x="48" y="96" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="18" fill="#a9b1d6">One bash script, <tspan font-family="Cascadia Code, Consolas, Menlo, monospace" fill="#7dcfff">bin/ghostty-wallpaper</tspan>, does all of it. ImageMagick does the pixel work.</text>
+
+  <!-- Triggers -->
+  <g font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif">
+    <rect x="48" y="130" width="330" height="62" rx="12" fill="#1a1d2e" stroke="#bb9af7" stroke-width="2"/>
+    <text x="68" y="157" font-size="17" font-weight="700" fill="#bb9af7">Every new shell</text>
+    <text x="68" y="180" font-size="14" fill="#a9b1d6">zsh/wallpaper-hook.zsh</text>
+
+    <rect x="400" y="130" width="400" height="62" rx="12" fill="#1a1d2e" stroke="#7dcfff" stroke-width="2"/>
+    <text x="420" y="157" font-size="17" font-weight="700" fill="#7dcfff">Every 5 minutes, with --reload</text>
+    <text x="420" y="180" font-size="14" fill="#a9b1d6">systemd user timer (Linux) · launchd agent (macOS)</text>
+
+    <rect x="822" y="130" width="330" height="62" rx="12" fill="#1a1d2e" stroke="#ffd866" stroke-width="2"/>
+    <text x="842" y="157" font-size="17" font-weight="700" fill="#ffd866">By hand</text>
+    <text x="842" y="180" font-size="14" fill="#a9b1d6">ghostty-wallpaper [--set FILE] …</text>
+  </g>
+  <path d="M146 214 L987 214" fill="none" stroke="#8b93b8" stroke-width="2"/>
+  <line x1="213" y1="192" x2="213" y2="214" stroke="#8b93b8" stroke-width="2"/>
+  <line x1="987" y1="192" x2="987" y2="214" stroke="#8b93b8" stroke-width="2"/>
+  <line x1="600" y1="192" x2="600" y2="214" stroke="#8b93b8" stroke-width="2"/>
+  <path d="M146 213 L146 242" fill="none" stroke="#8b93b8" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Pipeline -->
+  <g font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif">
+    <!-- 1 Pick -->
+    <rect x="48" y="250" width="196" height="200" rx="14" fill="#15161e" stroke="#414868" stroke-width="2"/>
+    <circle cx="76" cy="280" r="15" fill="#ff5d8f"/><text x="76" y="286" text-anchor="middle" font-size="16" font-weight="800" fill="#0d1117">1</text>
+    <text x="100" y="287" font-size="20" font-weight="700" fill="#e6ebff">Pick</text>
+    <text x="66" y="324" font-size="14" fill="#c8d3f5">Random image from</text>
+    <text x="66" y="344" font-size="14" fill="#7dcfff" font-family="Cascadia Code, Consolas, Menlo, monospace">~/Pictures/ghostty</text>
+    <text x="66" y="364" font-size="14" fill="#c8d3f5">(this repo's</text>
+    <text x="66" y="384" font-size="14" fill="#c8d3f5"><tspan font-family="Cascadia Code, Consolas, Menlo, monospace" fill="#7dcfff">wallpapers/</tspan>), not</text>
+    <text x="66" y="404" font-size="14" fill="#c8d3f5">the one already on</text>
+    <text x="66" y="424" font-size="14" fill="#c8d3f5">screen.</text>
+
+    <!-- 2 Measure -->
+    <rect x="276" y="250" width="196" height="200" rx="14" fill="#15161e" stroke="#414868" stroke-width="2"/>
+    <circle cx="304" cy="280" r="15" fill="#ffd866"/><text x="304" y="286" text-anchor="middle" font-size="16" font-weight="800" fill="#0d1117">2</text>
+    <text x="328" y="287" font-size="20" font-weight="700" fill="#e6ebff">Measure</text>
+    <g transform="translate(296 312)">
+      <rect x="0" y="36" width="10" height="14" fill="url(#hist)"/>
+      <rect x="13" y="20" width="10" height="30" fill="url(#hist)"/>
+      <rect x="26" y="8" width="10" height="42" fill="url(#hist)"/>
+      <rect x="39" y="16" width="10" height="34" fill="url(#hist)"/>
+      <rect x="52" y="28" width="10" height="22" fill="url(#hist)"/>
+      <rect x="65" y="34" width="10" height="16" fill="url(#hist)"/>
+      <rect x="78" y="40" width="10" height="10" fill="url(#hist)"/>
+      <rect x="91" y="44" width="10" height="6" fill="url(#hist)"/>
+      <rect x="104" y="46" width="10" height="4" fill="url(#hist)"/>
+      <line x1="120" y1="0" x2="120" y2="54" stroke="#ff7eb6" stroke-width="2" stroke-dasharray="4 3"/>
+      <text x="126" y="14" font-size="13" font-weight="700" fill="#ff7eb6">p99</text>
+    </g>
+    <text x="294" y="394" font-size="14" fill="#c8d3f5">Find the 99th-percentile</text>
+    <text x="294" y="414" font-size="14" fill="#c8d3f5">brightness: where the</text>
+    <text x="294" y="434" font-size="14" fill="#c8d3f5">highlights really are.</text>
+
+    <!-- 3 Bake -->
+    <rect x="504" y="250" width="196" height="200" rx="14" fill="#15161e" stroke="#ff7eff" stroke-width="2.5"/>
+    <circle cx="532" cy="280" r="15" fill="#ff7eff"/><text x="532" y="286" text-anchor="middle" font-size="16" font-weight="800" fill="#0d1117">3</text>
+    <text x="556" y="287" font-size="20" font-weight="700" fill="#e6ebff">Bake a plate</text>
+    <text x="522" y="324" font-size="14" fill="#c8d3f5">Scale in linear light so</text>
+    <text x="522" y="344" font-size="14" fill="#c8d3f5">p99 lands on the cap,</text>
+    <text x="522" y="364" font-size="14" fill="#c8d3f5">then hard-clip at it.</text>
+    <text x="522" y="394" font-size="14" fill="#a9b1d6">Cached per image and</text>
+    <text x="522" y="414" font-size="14" fill="#a9b1d6">settings, so repeat</text>
+    <text x="522" y="434" font-size="14" fill="#a9b1d6">picks are instant.</text>
+
+    <!-- 4 Write -->
+    <rect x="732" y="250" width="196" height="200" rx="14" fill="#15161e" stroke="#414868" stroke-width="2"/>
+    <circle cx="760" cy="280" r="15" fill="#9ece6a"/><text x="760" y="286" text-anchor="middle" font-size="16" font-weight="800" fill="#0d1117">4</text>
+    <text x="784" y="287" font-size="20" font-weight="700" fill="#e6ebff">Write</text>
+    <rect x="748" y="306" width="164" height="72" rx="8" fill="#0d1117" stroke="#2a2f45"/>
+    <text x="758" y="326" font-size="12" fill="#6f7aa6" font-family="Cascadia Code, Consolas, Menlo, monospace">wallpaper.conf</text>
+    <text x="758" y="347" font-size="12" fill="#9ece6a" font-family="Cascadia Code, Consolas, Menlo, monospace">background-image</text>
+    <text x="758" y="366" font-size="12" fill="#c8d3f5" font-family="Cascadia Code, Consolas, Menlo, monospace">  = &lt;plate&gt;.jpg</text>
+    <text x="750" y="404" font-size="14" fill="#c8d3f5">The main config pulls</text>
+    <text x="750" y="424" font-size="14" fill="#c8d3f5">it in via <tspan font-family="Cascadia Code, Consolas, Menlo, monospace" fill="#7dcfff">config-file</tspan>.</text>
+
+    <!-- 5 Apply -->
+    <rect x="960" y="250" width="196" height="200" rx="14" fill="#15161e" stroke="#414868" stroke-width="2"/>
+    <circle cx="988" cy="280" r="15" fill="#7dcfff"/><text x="988" y="286" text-anchor="middle" font-size="16" font-weight="800" fill="#0d1117">5</text>
+    <text x="1012" y="287" font-size="20" font-weight="700" fill="#e6ebff">Apply</text>
+    <text x="978" y="324" font-size="14" fill="#c8d3f5">New windows read it</text>
+    <text x="978" y="344" font-size="14" fill="#c8d3f5">at startup.</text>
+    <text x="978" y="374" font-size="14" fill="#c8d3f5">With <tspan font-family="Cascadia Code, Consolas, Menlo, monospace" fill="#7dcfff">--reload</tspan>, open</text>
+    <text x="978" y="394" font-size="14" fill="#c8d3f5">windows get <tspan font-family="Cascadia Code, Consolas, Menlo, monospace" fill="#ff7eb6">SIGUSR2</tspan></text>
+    <text x="978" y="414" font-size="14" fill="#c8d3f5">and reload live.</text>
+  </g>
+  <line x1="244" y1="350" x2="272" y2="350" stroke="#8b93b8" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="472" y1="350" x2="500" y2="350" stroke="#8b93b8" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="700" y1="350" x2="728" y2="350" stroke="#8b93b8" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="928" y1="350" x2="956" y2="350" stroke="#8b93b8" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Footer strip -->
+  <rect x="48" y="478" width="1108" height="50" rx="12" fill="#1a1d2e"/>
+  <text x="600" y="509" text-anchor="middle" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="16" fill="#a9b1d6">Drawn at <tspan font-family="Cascadia Code, Consolas, Menlo, monospace" fill="#ffd866">background-image-opacity = 1.0</tspan> on purpose: what is in the plate is exactly what lands on screen.</text>
+</svg>
